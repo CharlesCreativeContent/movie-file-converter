@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Movie File Converter</title>
+  <style>
+    :root {
+      --bg: #f3f4f6;
+      --surface: #ffffff;
+      --border: #e5e7eb;
+      --text: #111827;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --accent-h: #1d4ed8;
+      --success: #059669;
+      --error: #dc2626;
+      --radius: 10px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111827; --surface: #1f2937; --border: #374151;
+        --text: #f9fafb; --muted: #9ca3af;
+      }
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    a { color: var(--accent); text-decoration: none; }
+
+    nav {
+      display: flex;
+      gap: 4px;
+      padding: 10px 20px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-link {
+      padding: 6px 14px;
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+    }
+    .nav-link.active { background: var(--accent); color: #fff; }
+    .nav-link:hover:not(.active) { background: var(--border); color: var(--text); }
+
+    main {
+      max-width: 580px;
+      margin: 36px auto;
+      padding: 0 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    h1 { font-size: 1.55rem; font-weight: 700; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 2px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .hidden { display: none !important; }
+
+    .drop-zone {
+      background: var(--surface);
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+    }
+    .drop-zone-icon { color: var(--muted); margin-bottom: 10px; }
+    .drop-main { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .drop-sub { color: var(--muted); font-size: 14px; }
+    .drop-formats { color: var(--muted); font-size: 12px; letter-spacing: 0.05em; margin-top: 10px; }
+    .link-btn {
+      color: var(--accent);
+      cursor: pointer;
+      font: inherit;
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 14px;
+    }
+    .link-btn:hover { text-decoration: underline; }
+
+    .file-meta {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .file-name { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-size { color: var(--muted); font-size: 13px; white-space: nowrap; }
+
+    .field { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .field label { font-size: 14px; color: var(--muted); white-space: nowrap; }
+    select {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      width: 100%;
+      padding: 11px 18px;
+      border-radius: 7px;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s, background 0.15s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-h); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-ghost { background: var(--border); color: var(--text); }
+    .btn-ghost:hover { opacity: 0.8; }
+    .btn-success { background: var(--success); color: #fff; text-decoration: none; }
+    .btn-success:hover { opacity: 0.9; }
+
+    .progress-label { font-size: 14px; color: var(--muted); margin-bottom: 10px; }
+    .progress-track { height: 7px; background: var(--border); border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width 0.25s; width: 0%; }
+    .progress-fill.indeterminate {
+      width: 35% !important;
+      animation: slide 1.3s ease-in-out infinite;
+    }
+    @keyframes slide {
+      0%   { transform: translateX(-200%); }
+      100% { transform: translateX(450%); }
+    }
+
+    .success-label { color: var(--success); font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+    .error-label { color: var(--error); font-size: 14px; margin-bottom: 12px; word-break: break-word; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="index.html" class="nav-link active">Convert</a>
+    <a href="speed.html" class="nav-link">Speed Editor</a>
+  </nav>
+
+  <main>
+    <div>
+      <h1>Movie File Converter</h1>
+      <p class="subtitle">Convert videos in your browser — files never leave your device</p>
+    </div>
+
+    <div id="drop-zone" class="drop-zone" role="button" tabindex="0" aria-label="Drop video file or click to select">
+      <div class="drop-zone-icon">
+        <svg width="42" height="42" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9A2.25 2.25 0 0013.5 5.25h-9A2.25 2.25 0 002.25 7.5v9A2.25 2.25 0 004.5 18.75z"/>
+        </svg>
+      </div>
+      <p class="drop-main">Drop your video here</p>
+      <p class="drop-sub">or <button type="button" class="link-btn" id="browse-btn">browse files</button></p>
+      <p class="drop-formats">MOV · AVI · MKV · WebM · GIF · MP4</p>
+      <input type="file" id="file-input" accept="video/*,.mov,.avi,.mkv,.webm,.gif" style="display:none">
+    </div>
+
+    <div id="convert-section" class="card hidden">
+      <div class="file-meta">
+        <span class="file-name" id="file-name"></span>
+        <span class="file-size" id="file-size"></span>
+      </div>
+      <div class="field">
+        <label for="output-fmt">Convert to</label>
+        <select id="output-fmt"></select>
+      </div>
+      <button type="button" class="btn btn-primary" id="convert-btn">Convert</button>
+    </div>
+
+    <div id="progress-section" class="card hidden">
+      <p class="progress-label" id="progress-label">Preparing…</p>
+      <div class="progress-track">
+        <div class="progress-fill indeterminate" id="progress-fill"></div>
+      </div>
+    </div>
+
+    <div id="result-section" class="card hidden">
+      <p class="success-label">Conversion complete</p>
+      <a id="download-link" href="#" class="btn btn-success" download>Download</a>
+    </div>
+
+    <div id="error-section" class="card hidden">
+      <p class="error-label" id="error-msg"></p>
+      <button type="button" class="btn btn-ghost" id="retry-btn">Start over</button>
+    </div>
+  </main>
+
+  <script type="module">
+    import { CONVERSION_MAP, MIME_TO_EXT, getExtFromFile, getFFmpegArgs } from './lib/formats.js';
+
+    let selectedFile = null;
+    let ffmpegInstance = null;
+
+    const $ = id => document.getElementById(id);
+    const dropZone       = $('drop-zone');
+    const fileInput      = $('file-input');
+    const browseBtn      = $('browse-btn');
+    const convertSection = $('convert-section');
+    const fileNameEl     = $('file-name');
+    const fileSizeEl     = $('file-size');
+    const outputFmtSel   = $('output-fmt');
+    const convertBtn     = $('convert-btn');
+    const progressSection = $('progress-section');
+    const progressLabel  = $('progress-label');
+    const progressFill   = $('progress-fill');
+    const resultSection  = $('result-section');
+    const downloadLink   = $('download-link');
+    const errorSection   = $('error-section');
+    const errorMsg       = $('error-msg');
+    const retryBtn       = $('retry-btn');
+
+    const sections = [convertSection, progressSection, resultSection, errorSection];
+
+    function show(section) {
+      sections.forEach(s => s.classList.add('hidden'));
+      section?.classList.remove('hidden');
+    }
+
+    function fmtBytes(b) {
+      if (b < 1024 ** 2) return `${(b / 1024).toFixed(0)} KB`;
+      if (b < 1024 ** 3) return `${(b / 1024 ** 2).toFixed(1)} MB`;
+      return `${(b / 1024 ** 3).toFixed(1)} GB`;
+    }
+
+    function handleFile(file) {
+      if (!file) return;
+      const ext = getExtFromFile(file);
+      if (!ext) {
+        showError(`Unsupported format. Supported: ${Object.keys(CONVERSION_MAP).join(', ').toUpperCase()}`);
+        return;
+      }
+      const outputs = CONVERSION_MAP[ext] ?? [];
+      if (outputs.length === 0) {
+        showError(`No output formats available for .${ext}`);
+        return;
+      }
+      selectedFile = file;
+      fileNameEl.textContent = file.name;
+      fileSizeEl.textContent = fmtBytes(file.size);
+      outputFmtSel.innerHTML = outputs.map(o => `<option value="${o}">${o.toUpperCase()}</option>`).join('');
+      show(convertSection);
+    }
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      show(errorSection);
+    }
+
+    // Drag and drop
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+    dropZone.addEventListener('dragleave', e => { if (!dropZone.contains(e.relatedTarget)) dropZone.classList.remove('drag-over'); });
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      handleFile(e.dataTransfer.files[0]);
+    });
+    dropZone.addEventListener('click', () => fileInput.click());
+    browseBtn.addEventListener('click', e => { e.stopPropagation(); fileInput.click(); });
+    fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+    dropZone.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+    });
+
+    retryBtn.addEventListener('click', () => {
+      selectedFile = null;
+      fileInput.value = '';
+      show(null);
+    });
+
+    async function loadFFmpeg() {
+      if (ffmpegInstance) return ffmpegInstance;
+
+      const { FFmpeg } = await import('https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/esm/index.js');
+      const { toBlobURL } = await import('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js');
+
+      const useMT = typeof SharedArrayBuffer !== 'undefined';
+      const pkg = useMT ? '@ffmpeg/core-mt@0.12.6' : '@ffmpeg/core@0.12.6';
+      const base = `https://unpkg.com/${pkg}/dist/esm`;
+
+      const ffmpeg = new FFmpeg();
+      const loadOpts = {
+        coreURL: await toBlobURL(`${base}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${base}/ffmpeg-core.wasm`, 'application/wasm'),
+      };
+      if (useMT) {
+        loadOpts.workerURL = await toBlobURL(`${base}/ffmpeg-core.worker.js`, 'text/javascript');
+      }
+
+      await ffmpeg.load(loadOpts);
+      ffmpegInstance = ffmpeg;
+      return ffmpeg;
+    }
+
+    convertBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      const outFmt = outputFmtSel.value;
+      const inputExt = getExtFromFile(selectedFile);
+      const inputName = `input.${inputExt}`;
+      const outputName = `output.${outFmt}`;
+      const downloadName = `${selectedFile.name.replace(/\.[^.]+$/, '')}.${outFmt}`;
+
+      show(progressSection);
+      const logs = [];
+
+      try {
+        progressLabel.textContent = 'Loading FFmpeg engine…';
+        progressFill.className = 'progress-fill indeterminate';
+
+        const ffmpeg = await loadFFmpeg();
+
+        ffmpeg.off('progress');
+        ffmpeg.off('log');
+        ffmpeg.on('log', ({ message }) => { logs.push(message); });
+        ffmpeg.on('progress', ({ progress }) => {
+          const pct = Math.min(100, Math.round(Math.max(0, progress) * 100));
+          progressLabel.textContent = `Converting… ${pct}%`;
+          progressFill.className = 'progress-fill';
+          progressFill.style.width = `${pct}%`;
+        });
+
+        progressLabel.textContent = 'Reading file…';
+        progressFill.className = 'progress-fill indeterminate';
+
+        const { fetchFile } = await import('https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js');
+        await ffmpeg.writeFile(inputName, await fetchFile(selectedFile));
+
+        progressLabel.textContent = 'Converting…';
+        progressFill.className = 'progress-fill';
+        progressFill.style.width = '0%';
+
+        const args = getFFmpegArgs(inputExt, outFmt, inputName, outputName);
+        const exitCode = await ffmpeg.exec(args);
+
+        if (exitCode !== 0) {
+          throw new Error(`FFmpeg failed (exit ${exitCode}). Last log:\n${logs.slice(-5).join('\n')}`);
+        }
+
+        const data = await ffmpeg.readFile(outputName);
+        const mimeMap = { mp4: 'video/mp4', gif: 'image/gif' };
+        const blob = new Blob([data.buffer], { type: mimeMap[outFmt] ?? 'application/octet-stream' });
+
+        await ffmpeg.deleteFile(inputName).catch(() => {});
+        await ffmpeg.deleteFile(outputName).catch(() => {});
+
+        if (downloadLink._prevURL) URL.revokeObjectURL(downloadLink._prevURL);
+        const url = URL.createObjectURL(blob);
+        downloadLink._prevURL = url;
+        downloadLink.href = url;
+        downloadLink.download = downloadName;
+        downloadLink.textContent = `Download ${downloadName}`;
+
+        progressFill.className = 'progress-fill';
+        progressFill.style.width = '100%';
+        await new Promise(r => setTimeout(r, 300));
+
+        show(resultSection);
+      } catch (err) {
+        console.error(err);
+        showError(err.message ?? 'Conversion failed. See browser console for details.');
+      }
+    });
+  </script>
+</body>
+</html>
